@@ -65,6 +65,12 @@ function createTaskRow(task) {
     const name = taskRow.querySelector("[name='name']"); // Viide nime sisestusväljale
     name.value = task.name; // Määrame sisestusvälja väärtuseks ülesande nime
 
+     // Lisame event listeneri, et jälgida tekstivälja muutusi
+     name.addEventListener('input', () => {
+        task.name = name.value; // Uuendame `tasks` massiivis olevat ülesande nime
+        saveTasks(); // Salvestame muudatused LocalStorage'i
+    });
+
     const checkbox = taskRow.querySelector("[name='completed']"); // Viide checkboxile
     checkbox.checked = task.completed; // Märgime, kas ülesanne on tehtud
 
