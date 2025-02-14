@@ -8,14 +8,19 @@
     <title>ToDo app</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/antd/4.16.13/antd.min.css" rel="stylesheet" />
     <link href="style.css" rel="stylesheet" />
-    <script src="main.js"></script>
+    <script src="main.js" defer></script>
 </head>
 
 <body>
     <div type="flex" class="ant-row ant-row-center" style="min-height: 100vh; margin-top: 6rem;">
         <div class="ant-col ant-col-12">
+            
+            <!-- 👇 Pealkiri ja Logi välja nupp -->
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1>Task List</h1>
+                <button id="logout" type="button" class="ant-btn ant-btn-danger" style="background: red; color: white;">Logi välja</button>
+            </div>
 
-            <h1>Task List</h1>
             <button id="add-task" type="button" class="ant-btn ant-btn-default">Add Task</button>
             <div class="ant-divider ant-divider-horizontal" role="separator"></div>
 
@@ -25,7 +30,6 @@
         </div>
     </div>
 
-    
     <div style="display: none">
         <!-- Templates, so you don't have to mess with document.createElement -->
         <label class="ant-checkbox-wrapper" data-template="ant-checkbox">
