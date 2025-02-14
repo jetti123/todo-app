@@ -1,135 +1,156 @@
-// Laeme ülesanded LocalStorage'st või algväärtusega, kui LocalStorage on tühi
-const tasks = JSON.parse(localStorage.getItem('tasks')) || [
-    {
-        id: 1,
-        name: 'Task 1',
-        completed: false // Märgib, kas ülesanne on tehtud või mitte
-    },
-    {
-        id: 2,
-        name: 'Task 2',
-        completed: true // See ülesanne on märgitud tehtuks
-    }
-];
+// API URL ja kasutaja token
+const API_URL = "https://demo2.z-bit.ee/tasks";
+const TOKEN = "JHrfPxZr9pPvjCGcccuJseGjMNpr6H88"; // Asenda oma tokeniga
 
-// Leiame viimase ülesande ID; see aitab uutele ülesannetele ID-d määrata
-let lastTaskId = tasks.length ? tasks[tasks.length - 1].id : 0;
-
-// Defineerime hiljem kasutatavad elemendid
+// Globaalne muutujate deklaratsioon
+let tasks = [];
 let taskList;
 let addTask;
 
-// Kui leht on täielikult laetud, alustame ülesannete kuvamist
-window.addEventListener('load', () => {
-    // Viited HTML-i elementidele
-    taskList = document.querySelector('#task-list'); // Nimekiri ülesannete kuvamiseks
-    addTask = document.querySelector('#add-task'); // Nupp uue ülesande lisamiseks
+// Kui leht on täielikult laaditud, alustame andmete laadimist
+window.addEventListener("load", async () => {
+    taskList = document.querySelector("#task-list");
+    addTask = document.querySelector("#add-task");
 
-    // Kuvame kõik olemasolevad ülesanded (nt LocalStorage'st)
-    tasks.forEach(renderTask);
+    if (!taskList || !addTask) {
+        console.error("HTML elemendid puuduvad!");
+        return;
+    }
 
-    // Lisame event listeneri, et lisada uus ülesanne, kui nuppu vajutatakse
-    addTask.addEventListener('click', () => {
-        const task = createTask(); // Loome uue ülesande andmestikku
-        const taskRow = createTaskRow(task); // Loome ülesande jaoks HTML-elemendi
-        taskList.appendChild(taskRow); // Lisame uue ülesande HTML-i listi
-        saveTasks(); // Salvestame muudatused LocalStorage'i
+    // Laeme ülesanded serverist
+    await loadTasks();
+
+    // Kui vajutatakse "Add Task" nuppu, lisame uue ülesande
+    addTask.addEventListener("click", async () => {
+        const newTask = {
+            title: `Task ${tasks.length + 1}`,
+            desc: "",
+            marked_as_done: false
+        };
+        await createTask(newTask);
     });
 });
 
-// Funktsioon ühe ülesande kuvamiseks lehel
-function renderTask(task) {
-    const taskRow = createTaskRow(task); // Loome HTML-i elemendi ülesandele
-    taskList.appendChild(taskRow); // Lisame selle listi
-}
+// ✅ **1. Funktsioon ülesannete laadimiseks serverist**
+async function loadTasks() {
+    try {
+        const response = await fetch(API_URL, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${TOKEN}`
+            }
+        });
 
-// Loob uue ülesande ja lisab selle `tasks` massiivi
-function createTask() {
-    lastTaskId++; // Suurendame viimase ID väärtust, et tagada unikaalsus
-    const task = {
-        id: lastTaskId, // Määrame ülesandele ID
-        name: 'Task ' + lastTaskId, // Määrame ülesande nime
-        completed: false // Vaikimisi pole ülesanne tehtud
-    };
-    tasks.push(task); // Lisame ülesande massiivi
-    return task; // Tagastame loodud ülesande
-}
-
-// Loob ülesande jaoks HTML-elemendi
-function createTaskRow(task) {
-    // Kasutame malli (`data-template="task-row"`) ülesande rida loomiseks
-    let taskRow = document.querySelector('[data-template="task-row"]').cloneNode(true);
-    taskRow.removeAttribute('data-template'); // Eemaldame malli atribuudid
-
-    // Täidame vormiväljad andmetega
-    const name = taskRow.querySelector("[name='name']"); // Viide nime sisestusväljale
-    name.value = task.name; // Määrame sisestusvälja väärtuseks ülesande nime
-
-     // Lisame event listeneri, et jälgida tekstivälja muutusi
-     name.addEventListener('input', () => {
-        task.name = name.value; // Uuendame `tasks` massiivis olevat ülesande nime
-        saveTasks(); // Salvestame muudatused LocalStorage'i
-    });
-
-    const checkbox = taskRow.querySelector("[name='completed']"); // Viide checkboxile
-    checkbox.checked = task.completed; // Märgime, kas ülesanne on tehtud
-
-    // Lisame checkboxile sündmuse, et uuendada `completed` olekut
-    checkbox.addEventListener('change', () => {
-        task.completed = checkbox.checked; // Uuendame ülesande staatust
-        saveTasks(); // Salvestame muudatused LocalStorage'i
-    });
-
-    // Lisame kustutamise nupu sündmuse
-    const deleteButton = taskRow.querySelector('.delete-task');
-    deleteButton.addEventListener('click', () => {
-        taskList.removeChild(taskRow); // Eemaldame ülesande HTML-st
-        tasks.splice(tasks.findIndex(t => t.id === task.id), 1); // Eemaldame ülesande massiivist
-        saveTasks(); // Salvestame muudatused LocalStorage'i
-    });
-
-    // Rakendame checkboxi kujunduse (kasutatakse malli põhjal)
-    hydrateAntCheckboxes(taskRow);
-    return taskRow; // Tagastame loodud HTML-elemendi
-}
-
-// Salvestab ülesanded LocalStorage'i
-function saveTasks() {
-    localStorage.setItem('tasks', JSON.stringify(tasks)); // Teisendame massiivi JSON-formaati ja salvestame
-}
-
-// Loob spetsiaalse checkboxi malli põhjal
-function createAntCheckbox() {
-    const checkbox = document.querySelector('[data-template="ant-checkbox"]').cloneNode(true); // Kasutame checkboxi malli
-    checkbox.removeAttribute('data-template'); // Eemaldame malli atribuudi
-    hydrateAntCheckboxes(checkbox); // Lisame checkboxile vajalikud sündmused
-    return checkbox; // Tagastame loodud checkboxi
-}
-
-/**
- * Lisab eridisainiga checkboxile vajalikud sündmused
- * @param {HTMLElement} element Checkboxi wrapper või konteiner
- */
-function hydrateAntCheckboxes(element) {
-    const elements = element.querySelectorAll('.ant-checkbox-wrapper'); // Leia kõik checkboxid konteineris
-    for (let i = 0; i < elements.length; i++) {
-        let wrapper = elements[i];
-
-        // Kui element on juba töödeldud, siis jätame selle vahele
-        if (wrapper.__hydrated) continue;
-        wrapper.__hydrated = true; // Märgime, et element on töödeldud
-
-        const checkbox = wrapper.querySelector('.ant-checkbox'); // Leia checkboxi elemendid
-        const input = wrapper.querySelector('.ant-checkbox-input'); // Leia sisendväli
-
-        // Kui sisend on märgitud, lisame klassi `ant-checkbox-checked`
-        if (input.checked) {
-            checkbox.classList.add('ant-checkbox-checked');
+        if (!response.ok) {
+            throw new Error(`Ülesannete laadimine ebaõnnestus: ${response.status}`);
         }
 
-        // Lisame sündmuse sisendi muutmiseks
-        input.addEventListener('change', () => {
-            checkbox.classList.toggle('ant-checkbox-checked'); // Lülitame `checked` klassi
-        });
+        tasks = await response.json();
+        taskList.innerHTML = ""; // Tühjendame nimekirja enne kuvamist
+        tasks.forEach(renderTask);
+    } catch (error) {
+        console.error("Viga ülesannete laadimisel:", error);
     }
+}
+
+// ✅ **2. Funktsioon ühe ülesande lisamiseks serverisse**
+async function createTask(task) {
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${TOKEN}`
+            },
+            body: JSON.stringify(task)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ülesande loomine ebaõnnestus: ${response.status}`);
+        }
+
+        const newTask = await response.json();
+        tasks.push(newTask);
+        renderTask(newTask);
+    } catch (error) {
+        console.error("Viga ülesande loomisel:", error);
+    }
+}
+
+// ✅ **3. Funktsioon ülesande uuendamiseks serveris**
+async function updateTask(task) {
+    try {
+        const response = await fetch(`${API_URL}/${task.id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${TOKEN}`
+            },
+            body: JSON.stringify(task)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ülesande uuendamine ebaõnnestus: ${response.status}`);
+        }
+    } catch (error) {
+        console.error("Viga ülesande uuendamisel:", error);
+    }
+}
+
+// ✅ **4. Funktsioon ülesande kustutamiseks serverist**
+async function deleteTask(taskId) {
+    try {
+        const response = await fetch(`${API_URL}/${taskId}`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${TOKEN}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Ülesande kustutamine ebaõnnestus: ${response.status}`);
+        }
+    } catch (error) {
+        console.error("Viga ülesande kustutamisel:", error);
+    }
+}
+
+// ✅ **5. Funktsioon ülesande HTML-rea loomiseks**
+function createTaskRow(task) {
+    let taskRow = document.querySelector('[data-template="task-row"]').cloneNode(true);
+    taskRow.removeAttribute("data-template");
+    taskRow.style.display = "block";
+    taskRow.setAttribute("data-id", task.id);
+
+    const nameInput = taskRow.querySelector("[name='name']");
+    nameInput.value = task.title;
+
+    nameInput.addEventListener("input", async () => {
+        task.title = nameInput.value;
+        await updateTask(task);
+    });
+
+    const checkbox = taskRow.querySelector("[name='completed']");
+    checkbox.checked = task.marked_as_done;
+
+    checkbox.addEventListener("change", async () => {
+        task.marked_as_done = checkbox.checked;
+        await updateTask(task);
+    });
+
+    const deleteButton = taskRow.querySelector(".delete-task");
+    deleteButton.addEventListener("click", async () => {
+        await deleteTask(task.id);
+        taskRow.remove();
+    });
+
+    return taskRow;
+}
+
+// ✅ **6. Funktsioon ülesande kuvamiseks lehel**
+function renderTask(task) {
+    const taskRow = createTaskRow(task);
+    taskList.appendChild(taskRow);
 }
